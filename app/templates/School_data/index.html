@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>校园用眼环境数据分析</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        :root {
+            --primary-blue: #2C3E50;
+            --secondary-blue: #3498DB;
+            --accent-red: #E74C3C;
+            --health-green: #00B894;
+        }
+
+        .data-header {
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+            padding: 80px 0 60px;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease;
+        }
+
+        .chart-container:hover {
+            transform: translateY(-5px);
+        }
+
+        .bg-light-blue {
+            background-color: rgba(58, 134, 255, 0.1);
+        }
+
+        .bg-light-green {
+            background-color: rgba(0, 184, 148, 0.1);
+        }
+
+        .bg-light-yellow {
+            background-color: rgba(255, 193, 7, 0.1);
+        }
+
+        .bg-light-pink {
+            background-color: rgba(255, 107, 129, 0.1);
+        }
+
+        .card-header {
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .progress {
+            background-color: #f0f0f0;
+            border-radius: 10px;
+        }
+
+        .progress-bar {
+            font-size: 12px;
+            line-height: 20px;
+        }
+
+        table td {
+            vertical-align: middle;
+        }
+
+        .form-control-sm {
+            height: calc(1.5em + 0.5rem + 2px);
+            padding: 0.25rem 0.5rem;
+        }
+
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark eye-care-nav fixed-top">
+    <div class="container">
+        <a class="navbar-brand" href="#">
+            <i class="fas fa-eye me-2"></i>
+            家庭用眼习惯指导
+        </a>
+        <div class="d-flex align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <!-- 下载按钮 -->
+                <button class="btn btn-primary" id="downloadBtn">
+                    <i class="fas fa-download me-2"></i>
+                    下载家庭用眼数据
+                </button>
+                <!-- 上传按钮 -->
+                <div class="position-relative">
+                    <input type="file" id="fileInput" hidden accept=".xlsx,.xls">
+                    <button class="btn btn-success" id="uploadBtn">
+                        <i class="fas fa-upload me-2"></i>
+                        上传Excel数据
+                    </button>
+                    <div class="upload-spinner" style="display: none"></div>
+                </div>
+                <!-- 返回按钮 -->
+                <a href="{{ url_for('index')}}" class="btn btn-outline-light ms-3">
+                    <i class="fas fa-home me-2"></i>
+                    返回首页
+                </a>
+            </div>
+        </div>
+</nav>
+<!-- 数据概览头部 -->
+<header class="data-header text-white">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h1 class="display-6 mb-4">校园用眼环境数据分析</h1>
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="h2 mb-0" id="totalStudents">-</div>
+                            <small class="text-light">总样本数量</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="h2 mb-0" id="avgOutdoor">-</div>
+                            <small class="text-light">平均户外活动</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="h2 mb-0" id="correlation">-</div>
+                            <small class="text-light">活动阅读相关性</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 mt-4 mt-lg-0">
+                <div class="bg-white rounded-3 p-3 shadow">
+                    <div id="featureImportanceChart" style="height: 250px"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- 主内容区 -->
+<div class="container py-4">
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="chart-container">
+                <div id="lightVisionChart" style="height:400px"></div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="chart-container">
+                <div id="screenTimeChart" style="height:400px"></div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- 在容器闭合标签 </div> 前添加以下代码 -->
+<section class="container py-4">
+    <h3 class="mb-4"><i class="fas fa-lightbulb me-2 text-warning"></i>校园用眼健康指导建议</h3>
+
+    <div class="row g-4">
+        <!-- 光照环境建议 -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <i class="fas fa-sun me-2"></i>教室照明标准
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li class="mb-2 d-flex">
+                            <span class="badge bg-success me-2"><i class="fas fa-check"></i></span>
+                            <span>黑板照度 ≥ 500 lux</span>
+                        </li>
+                        <li class="mb-2 d-flex">
+                            <span class="badge bg-success me-2"><i class="fas fa-check"></i></span>
+                            <span>课桌面照度 ≥ 300 lux</span>
+                        </li>
+                        <li class="mb-2 d-flex">
+                            <span class="badge bg-danger me-2"><i class="fas fa-times"></i></span>
+                            <span>避免荧光灯频闪</span>
+                        </li>
+                        <li class="d-flex">
+                            <span class="badge bg-info me-2"><i class="fas fa-info"></i></span>
+                            <span>自然光+人工照明组合最佳</span>
+                        </li>
+                    </ul>
+                    <div class="alert alert-primary mt-3 p-2 small">
+                        <i class="fas fa-bell me-2"></i>建议每学期检测教室照度
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 课桌椅配置 -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-chair me-2"></i>课桌椅配置指南
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6 class="d-flex align-items-center">
+                            <span class="badge bg-secondary me-2">1</span>
+                            高度匹配原则
+                        </h6>
+                        <p class="small text-muted">桌高 = 学生身高 × 0.43 + 2cm</p>
+                    </div>
+                    <div class="mb-3">
+                        <h6 class="d-flex align-items-center">
+                            <span class="badge bg-secondary me-2">2</span>
+                            正确坐姿标准
+                        </h6>
+                        <ul class="small text-muted ps-3">
+                            <li>双脚平放地面</li>
+                            <li>大腿与小腿呈90°</li>
+                            <li>眼睛距书本30-35cm</li>
+                        </ul>
+                    </div>
+                    <div class="alert alert-success p-2 small mb-0">
+                        <i class="fas fa-clock me-2"></i>建议每学期调整桌椅高度
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 电子设备使用 -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <i class="fas fa-tablet-screen-button me-2"></i>多媒体设备规范
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6>使用时间限制</h6>
+                        <div class="progress mb-2" style="height: 20px;">
+                            <div class="progress-bar bg-danger" style="width: 20%">幼儿园</div>
+                            <div class="progress-bar bg-warning" style="width: 30%">小学</div>
+                            <div class="progress-bar bg-info" style="width: 40%">中学</div>
+                        </div>
+                        <p class="small text-muted">单次使用不超过15-20分钟</p>
+                    </div>
+                    <div class="mb-3">
+                        <h6>屏幕参数要求</h6>
+                        <ul class="small text-muted ps-3">
+                            <li>亮度与环境光协调</li>
+                            <li>刷新率 ≥ 60Hz</li>
+                            <li>安装高度 = 屏幕中心离地1.5m</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 综合建议 -->
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <i class="fas fa-clipboard-list me-2"></i>校园视力健康综合方案
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3 border-end">
+                            <div class="bg-light-blue p-3 rounded-circle d-inline-block">
+                                <i class="fas fa-clock text-primary fa-2x"></i>
+                            </div>
+                            <h6 class="mt-2">课程安排</h6>
+                            <ul class="list-unstyled small text-muted">
+                                <li>每40分钟远眺5分钟</li>
+                                <li>上午/下午各1次眼保健操</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-3 border-end">
+                            <div class="bg-light-green p-3 rounded-circle d-inline-block">
+                                <i class="fas fa-running text-success fa-2x"></i>
+                            </div>
+                            <h6 class="mt-2">户外活动</h6>
+                            <ul class="list-unstyled small text-muted">
+                                <li>每天≥2小时户外</li>
+                                <li>设置阳光体育时段</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-3 border-end">
+                            <div class="bg-light-yellow p-3 rounded-circle d-inline-block">
+                                <i class="fas fa-book-open text-warning fa-2x"></i>
+                            </div>
+                            <h6 class="mt-2">读写规范</h6>
+                            <ul class="list-unstyled small text-muted">
+                                <li>"三个一"标准</li>
+                                <li>使用防近视作业本</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="bg-light-pink p-3 rounded-circle d-inline-block">
+                                <i class="fas fa-utensils text-danger fa-2x"></i>
+                            </div>
+                            <h6 class="mt-2">营养支持</h6>
+                            <ul class="list-unstyled small text-muted">
+                                <li>食堂提供护眼食谱</li>
+                                <li>限制高糖食品供应</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+</body>
+
+<script src="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+<script>
+    // 更新数据获取逻辑
+    async function fetchSchoolData() {
+        try {
+            const [featureRes, relationRes] = await Promise.all([
+                fetch('/analyze/echarts'),
+                fetch('/analysis/relation_map')
+            ]);
+
+            if (!featureRes.ok || !relationRes.ok) {
+                throw new Error('数据请求失败');
+            }
+
+            return {
+                feature: await featureRes.json(),
+                relation: await relationRes.json()
+            };
+        } catch (error) {
+            console.error('获取数据失败:', error);
+            throw error;
+        }
+    }
+
+    // 特征重要性图表
+    function initSchoolFeatureChart(dom, data) {
+        if (!data || !data.data) {
+            throw new Error('无效的特征重要性数据');
+        }
+
+        const chart = echarts.init(dom);
+        const option = {
+            title: {
+                text: '影响视力健康的因素重要性',
+                left: 'center',
+                top: 10
+            },
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {type: 'shadow'},
+                formatter: params => {
+                    return `${params[0].name}<br/>
+                        重要性: <b>${params[0].value}</b>`;
+                }
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'value',
+                axisLabel: {
+                    formatter: value => value.toFixed(3)
+                }
+            },
+            yAxis: {
+                type: 'category',
+                data: data.data.map(d => d.feature),
+                axisLabel: {
+                    formatter: value => {
+                        const mappings = {
+                            '教室灯光类型': '灯光类型',
+                            '桌椅高度可调': '桌椅可调',
+                            '每日户外活动(小时)': '户外活动',
+                            '电子产品使用时间(小时)': '电子使用',
+                            '每日阅读时间(小时)': '阅读时间',
+                            '桌椅布局': '桌椅布局',
+                            '正确阅读姿势': '阅读姿势'
+                        };
+                        return mappings[value] || value;
+                    }
+                }
+            },
+            series: [{
+                name: '重要性',
+                type: 'bar',
+                data: data.data.map(d => d.importance),
+                itemStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                        {offset: 0, color: '#3498DB'},
+                        {offset: 1, color: '#2980B9'}
+                    ]),
+                    borderRadius: [0, 4, 4, 0]
+                },
+                label: {
+                    show: true,
+                    position: 'right',
+                    formatter: '{c}'
+                }
+            }]
+        };
+        chart.setOption(option);
+        return chart;
+    }
+
+    // 灯光视力关系图表
+    function initLightVisionChart(dom, data) {
+        if (!data || !data.lightVision) {
+            throw new Error('无效的灯光视力数据');
+        }
+
+        const chart = echarts.init(dom);
+        const option = {
+            title: {
+                text: '灯光类型与视力关系',
+                left: 'center',
+                top: 10
+            },
+            tooltip: {
+                trigger: 'axis',
+                formatter: params => {
+                    return `${params[0].axisValue}<br/>
+                        视力正常率: <b>${params[0].data}%</b>`;
+                }
+            },
+            xAxis: {
+                type: 'category',
+                data: data.lightVision.categories.map(t =>
+                    t === 0 ? 'LED' : t === 1 ? '荧光灯' : '自然光'),
+                axisLabel: {
+                    interval: 0
+                }
+            },
+            yAxis: {
+                type: 'value',
+                min: 0,
+                max: 100,
+                axisLabel: {
+                    formatter: '{value}%'
+                }
+            },
+            series: [{
+                name: '视力正常率',
+                type: 'bar',
+                data: data.lightVision.values.map(v => (v * 100).toFixed(1)),
+                itemStyle: {
+                    color: function (params) {
+                        const colorList = ['#E74C3C', '#3498DB', '#00B894'];
+                        return colorList[params.dataIndex] || '#999';
+                    },
+                    borderRadius: [4, 4, 0, 0]
+                },
+                label: {
+                    show: true,
+                    position: 'top',
+                    formatter: '{c}%'
+                }
+            }]
+        };
+        chart.setOption(option);
+        return chart;
+    }
+
+    // 屏幕时间分布图表
+    function initScreenTimeChart(dom, data) {
+        if (!data || !data.screenTime) {
+            throw new Error('无效的屏幕时间数据');
+        }
+
+        const chart = echarts.init(dom);
+        const option = {
+            title: {
+                text: '电子设备使用时间分布',
+                left: 'center',
+                top: 10
+            },
+            tooltip: {
+                trigger: 'item',
+                formatter: params => {
+                    const total = data.screenTime.data.reduce((a, b) => a + b, 0);
+                    const percent = ((params.value / total) * 100).toFixed(1);
+                    return `${params.name}<br/>
+                        人数: <b>${params.value}</b><br/>
+                        占比: <b>${percent}%</b>`;
+                }
+            },
+            legend: {
+                orient: 'horizontal',
+                bottom: 0,
+                data: data.screenTime.legend
+            },
+            series: [{
+                name: '使用时长',
+                type: 'pie',
+                radius: ['40%', '70%'],
+                avoidLabelOverlap: false,
+                itemStyle: {
+                    borderRadius: 6,
+                    borderColor: '#fff',
+                    borderWidth: 2
+                },
+                label: {
+                    show: true,
+                    formatter: '{b}: {c} ({d}%)'
+                },
+                emphasis: {
+                    label: {
+                        show: true,
+                        fontSize: '18',
+                        fontWeight: 'bold'
+                    }
+                },
+                data: data.screenTime.legend.map((name, idx) => ({
+                    name: name,
+                    value: data.screenTime.data[idx]
+                }))
+            }]
+        };
+        chart.setOption(option);
+        return chart;
+    }
+
+    // 文件上传处理
+    document.getElementById('uploadBtn').addEventListener('click', function() {
+        document.getElementById('fileInput').click();
+    });
+    document.getElementById('fileInput').addEventListener('change', async function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const uploadBtn = document.getElementById('uploadBtn');
+        const originalText = uploadBtn.innerHTML;
+
+        try {
+            // 显示上传状态
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>上传中...';
+
+            const formData = new FormData();
+            formData.append('file', file);
+            // 上传文件到服务器
+            const uploadResponse = await fetch('/analyze/echarts', {
+                method: 'POST',
+                body: formData
+            });
+            if (!uploadResponse.ok) {
+                throw new Error('文件上传失败: ' + uploadResponse.statusText);
+            }
+            // 解析上传结果
+            const result = await uploadResponse.json();
+
+            // 显示成功提示
+            showAlert('文件上传成功，数据已更新!', 'success');
+
+            // 重新加载数据
+            await reloadData();
+
+        } catch (error) {
+            console.error('上传错误:', error);
+            showAlert('上传失败: ' + error.message, 'danger');
+        } finally {
+            // 重置上传按钮状态
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = originalText;
+            e.target.value = ''; // 清除文件选择
+        }
+    });
+    // 文件下载处理
+    document.getElementById('downloadBtn').addEventListener('click', async function() {
+        const downloadBtn = this;
+        const originalText = downloadBtn.innerHTML;
+
+        try {
+            // 显示下载状态
+            downloadBtn.disabled = true;
+            downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>准备下载...';
+
+            // 请求下载
+            const response = await fetch('/download/school_file');
+
+            if (!response.ok) {
+                throw new Error('下载失败: ' + response.statusText);
+            }
+
+            // 获取文件名
+            const contentDisposition = response.headers.get('content-disposition');
+            const filename = contentDisposition
+                ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+                : 'school_eye_data.xlsx';
+
+            // 创建Blob对象
+            const blob = await response.blob();
+
+            // 创建下载链接
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+
+            // 清理
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            // 显示成功提示
+            showAlert('文件下载成功!', 'success');
+
+        } catch (error) {
+            console.error('下载错误:', error);
+            showAlert('下载失败: ' + error.message, 'danger');
+        } finally {
+            // 重置下载按钮状态
+            downloadBtn.disabled = false;
+            downloadBtn.innerHTML = originalText;
+        }
+    });
+    // 重新加载数据
+    async function reloadData() {
+        try {
+            // 显示加载状态
+            document.querySelectorAll('#totalStudents, #avgOutdoor, #correlation')
+                .forEach(el => el.innerHTML = '<i class="fas fa-spinner fa-spin"></i>');
+
+            // 获取新数据
+            const { feature, relation } = await fetchSchoolData();
+
+            // 更新顶部数据卡片
+            document.getElementById('totalStudents').textContent =
+                relation.screenTime.data.reduce((a, b) => a + b, 0);
+            document.getElementById('avgOutdoor').textContent = '1.8h';
+            document.getElementById('correlation').textContent =
+                relation.activityCorrelation;
+
+            // 重新初始化图表
+            if (window.currentCharts) {
+                window.currentCharts.forEach(chart => chart.dispose());
+            }
+
+            window.currentCharts = [
+                initSchoolFeatureChart(document.getElementById('featureImportanceChart'), feature),
+                initLightVisionChart(document.getElementById('lightVisionChart'), relation),
+                initScreenTimeChart(document.getElementById('screenTimeChart'), relation)
+            ];
+
+        } catch (error) {
+            console.error('数据重载失败:', error);
+            showAlert('数据更新失败: ' + error.message, 'danger');
+        }
+    }
+    // 显示提示信息
+    function showAlert(message, type) {
+        const alertHtml = `
+            <div class="alert alert-${type} alert-dismissible fade show position-fixed"
+                 style="top: 20px; right: 20px; z-index: 1100;">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+
+        // 移除旧的提示
+        document.querySelectorAll('.alert.position-fixed').forEach(el => el.remove());
+
+        // 添加新提示
+        document.body.insertAdjacentHTML('beforeend', alertHtml);
+
+        // 5秒后自动消失
+        setTimeout(() => {
+            const alert = document.querySelector('.alert.position-fixed');
+            if (alert) {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            }
+        }, 5000);
+    }
+
+    // 初始化页面
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+
+            // 显示加载状态
+            document.querySelectorAll('#totalStudents, #avgOutdoor, #correlation')
+                .forEach(el => el.innerHTML = '<i class="fas fa-spinner fa-spin"></i>');
+
+            // 获取数据
+            const {feature, relation} = await fetchSchoolData();
+
+            // 更新顶部数据卡片
+            document.getElementById('totalStudents').textContent =
+                relation.screenTime.data.reduce((a, b) => a + b, 0);
+            document.getElementById('avgOutdoor').textContent = '1.8h';
+            document.getElementById('correlation').textContent =
+                relation.activityCorrelation;
+
+            // 初始化图表
+            const charts = [
+                initSchoolFeatureChart(document.getElementById('featureImportanceChart'), feature),
+                initLightVisionChart(document.getElementById('lightVisionChart'), relation),
+                initScreenTimeChart(document.getElementById('screenTimeChart'), relation)
+            ];
+             window.currentCharts = charts;
+
+            // 窗口大小变化时重绘图表
+            window.addEventListener('resize', function () {
+                charts.forEach(chart => chart.resize());
+            });
+
+        } catch (error) {
+            console.error('初始化失败:', error);
+            // 显示错误信息
+            const errorHtml = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        数据加载失败: ${error.message}
+                    </div>
+                `;
+            document.querySelectorAll('.chart-container').forEach(container => {
+                container.innerHTML = errorHtml;
+            });
+
+            document.querySelectorAll('#totalStudents, #avgOutdoor, #correlation')
+                .forEach(el => el.textContent = '--');
+        }
+    });
+</script>
+</body>
+</html>

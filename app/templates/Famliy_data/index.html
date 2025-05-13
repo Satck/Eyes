@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>青少年家庭视力健康数据分析</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-blue: #1A4D8F;
+            --health-green: #00B894;
+            --warning-orange: #FF9F43;
+            --danger-red: #D63031;
+        }
+
+        .data-header {
+            background: linear-gradient(135deg, var(--primary-blue) 0%, #3A86FF 100%);
+            padding: 80px 0 60px;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease;
+        }
+
+        .chart-container:hover {
+            transform: translateY(-5px);
+        }
+
+        .dashboard-card {
+            border: 1px solid rgba(0, 0, 0, 0.12);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            height: 100%;
+        }
+
+        .dashboard-card:hover {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.06);
+            transform: translateY(-2px);
+        }
+
+        .dashboard-icon {
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        }
+
+        .feature-importance-bar {
+            height: 25px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #3A86FF, #6C5CE7);
+        }
+
+        .feature-name {
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .feature-value {
+            font-weight: bold;
+            color: var(--primary-blue);
+        }
+
+        .risk-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .bg-purple {
+            background-color: #6C5CE7;
+        }
+
+        .bg-orange {
+            background-color: var(--warning-orange);
+        }
+
+        .bg-blue {
+            background-color: #3A86FF;
+        }
+
+        .bg-pink {
+            background-color: #FF7675;
+        }
+
+        .nav-pills .nav-link.active {
+            background-color: var(--primary-blue);
+        }
+
+        .tab-content {
+            padding: 20px 0;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid rgba(0, 0, 0, .1);
+            border-radius: 50%;
+            border-top-color: #007bff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .bg-health-green-10 {
+            background-color: rgba(0, 184, 148, 0.1);
+        }
+
+        .lh-sm {
+            line-height: 1.4;
+        }
+
+        .badge {
+            min-width: 50px;
+            font-weight: 500;
+        }
+
+        .list-unstyled li {
+            padding: 4px 0;
+        }
+
+        .alert-primary {
+            background-color: rgba(58, 134, 255, 0.15);
+            border-color: rgba(58, 134, 255, 0.2);
+        }
+
+
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark eye-care-nav fixed-top">
+    <div class="container">
+        <a class="navbar-brand" href="#">
+            <i class="fas fa-eye me-2"></i>
+            家庭用眼习惯指导
+        </a>
+        <div class="d-flex align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <!-- 下载按钮 -->
+                <button class="btn btn-primary" id="downloadBtn">
+                    <i class="fas fa-download me-2"></i>
+                    下载学校用眼数据
+                </button>
+                <!-- 上传按钮 -->
+                <div class="position-relative">
+                    <input type="file" id="fileInput" hidden accept=".xlsx,.xls">
+                    <button class="btn btn-success" id="uploadBtn">
+                        <i class="fas fa-upload me-2"></i>
+                        上传Excel数据
+                    </button>
+                    <div class="upload-spinner" style="display: none"></div>
+                </div>
+                <!-- 返回按钮 -->
+                <a href="{{ url_for('index')}}" class="btn btn-outline-light ms-3">
+                    <i class="fas fa-home me-2"></i>
+                    返回首页
+                </a>
+            </div>
+        </div>
+</nav>
+<!-- 数据概览头部 -->
+<header class="data-header text-white">
+    <div class="container">
+        <div class="row align-items-center">
+            <!-- 左侧数据概览 -->
+            <div class="col-lg-6">
+                <h1 class="display-4 mb-4">青少年家庭视力健康数据分析</h1>
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="h2 mb-0" id="totalStudents">1000</div>
+                            <small class="text-light">总样本数量</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="h2 mb-0" id="visionRate">45.8%</div>
+                            <small class="text-light">平均视力正常率</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="h2 mb-0" id="avgScreenTime">2.1h</div>
+                            <small class="text-light">平均电子使用时间</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧特征重要性图表 -->
+            <div class="col-lg-6 mt-4 mt-lg-0">
+                <div class="bg-white rounded-3 p-3 shadow">
+                    <div id="featureImportanceChart" style="height: 250px"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+<!-- 主内容区 -->
+<div class="container py-4">
+    <!-- 选项卡导航 -->
+    <ul class="nav nav-pills mb-4" id="analysisTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="environment-tab" data-bs-toggle="pill" data-bs-target="#environment"
+                    type="button" role="tab">
+                <i class="fas fa-lightbulb me-2"></i>环境因素
+            </button>
+        </li>
+
+    </ul>
+    <!-- 选项卡内容 -->
+    <div class="tab-content" id="analysisTabsContent">
+        <!-- 环境因素选项卡 -->
+        <div class="tab-pane fade show active" id="environment" role="tabpanel">
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="chart-container">
+                        <div id="lightChart" style="height:400px"></div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="chart-container">
+                        <div id="layoutChart" style="height:400px"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 用眼习惯选项卡 -->
+        <div class="tab-pane fade" id="habits" role="tabpanel">
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="chart-container">
+                        <div id="screenChart" style="height:400px"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- 关键指标卡片 -->
+    <h3 class="mt-5 mb-4"><i class="fas fa-chart-line me-2"></i>关键指标分析</h3>
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="dashboard-card bg-white p-4">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="bg-danger text-white rounded-circle p-3 me-3 dashboard-icon">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    </div>
+                    <h4 class="mb-0">高风险群体</h4>
+                </div>
+                <p class="text-muted">每日电子屏幕使用超过4小时的学生</p>
+                <div class="alert alert-danger p-2" id="highRiskRate">
+                    12.4% <span class="risk-indicator bg-danger ms-2"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="dashboard-card bg-white p-4">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="bg-success text-white rounded-circle p-3 me-3 dashboard-icon">
+                        <i class="fas fa-sun fa-2x"></i>
+                    </div>
+                    <h4 class="mb-0">户外活动</h4>
+                </div>
+                <p class="text-muted">特征重要性值</p>
+                <div class="display-5">26.71%</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="dashboard-card bg-white p-4">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="bg-info text-white rounded-circle p-3 me-3 dashboard-icon">
+                        <i class="fas fa-chair fa-2x"></i>
+                    </div>
+                    <h4 class="mb-0">桌椅可调</h4>
+                </div>
+                <p class="text-muted">特征重要性值</p>
+                <div class="display-5">3.24%</div>
+            </div>
+        </div>
+    </div>
+    <section class="container py-4">
+        <h3 class="mb-4"><i class="fas fa-house-user me-2"></i>家庭用眼健康指南</h3>
+
+        <div class="row g-4">
+            <!-- 用眼时间指导 -->
+            <div class="col-md-6 col-lg-4">
+                <div class="dashboard-card bg-white p-4 h-100">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-blue text-white rounded-circle p-3 me-3 dashboard-icon">
+                            <i class="fas fa-hourglass-half fa-2x"></i>
+                        </div>
+                        <h5 class="mb-0">20-20-20法则</h5>
+                    </div>
+                    <div class="text-muted lh-sm">
+                        <p class="mb-2">每用眼20分钟 → 注视20英尺（6米）外物体 → 持续20秒</p>
+                        <div class="alert alert-primary p-2 mb-0">
+                            <i class="fas fa-bell me-2"></i>建议设置定时提醒
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 环境光照建议 -->
+            <div class="col-md-6 col-lg-4">
+                <div class="dashboard-card bg-white p-4 h-100">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-purple text-white rounded-circle p-3 me-3 dashboard-icon">
+                            <i class="fas fa-lightbulb fa-2x"></i>
+                        </div>
+                        <h5 class="mb-0">光照标准</h5>
+                    </div>
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            阅读区照度 ≥ 300 lux
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-times-circle text-danger me-2"></i>
+                            避免直射强光/单侧光
+                        </li>
+                        <li>
+                            <i class="fas fa-ruler-combined me-2 text-primary"></i>
+                            台灯距书本40-50cm
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <!-- 设备使用规范 -->
+            <div class="col-md-6 col-lg-4">
+                <div class="dashboard-card bg-white p-4 h-100">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-orange text-white rounded-circle p-3 me-3 dashboard-icon">
+                            <i class="fas fa-tablet-screen-button fa-2x"></i>
+                        </div>
+                        <h5 class="mb-0">电子设备准则</h5>
+                    </div>
+                    <div class="text-muted">
+                        <div class="d-flex mb-2">
+                            <span class="badge bg-danger me-2">禁止</span>
+                            <span>黑暗环境使用屏幕</span>
+                        </div>
+                        <div class="d-flex mb-2">
+                            <span class="badge bg-success me-2">建议</span>
+                            <span>屏幕低于眼水平线10-20°</span>
+                        </div>
+                        <div class="d-flex">
+                            <span class="badge bg-primary me-2">设置</span>
+                            <span>启用蓝光过滤模式</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 综合建议 -->
+            <div class="col-12">
+                <div class="chart-container bg-health-green-10">
+                    <div class="row g-3">
+                        <div class="col-md-3 text-center">
+                            <div class="bg-health-green text-white p-3 rounded-circle d-inline-block">
+                                <i class="fas fa-sun fa-2x"></i>
+                            </div>
+                            <h6 class="mt-2">每日户外活动</h6>
+                            <p class="mb-0 text-muted small">≥2小时</p>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="bg-primary-blue text-white p-3 rounded-circle d-inline-block">
+                                <i class="fas fa-bed fa-2x"></i>
+                            </div>
+                            <h6 class="mt-2">睡眠时长</h6>
+                            <p class="mb-0 text-muted small">小学生≥10小时</p>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="bg-warning-orange text-white p-3 rounded-circle d-inline-block">
+                                <i class="fas fa-book-open fa-2x"></i>
+                            </div>
+                            <h6 class="mt-2">阅读距离</h6>
+                            <p class="mb-0 text-muted small">≥33cm</p>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="bg-danger-red text-white p-3 rounded-circle d-inline-block">
+                                <i class="fas fa-utensils fa-2x"></i>
+                            </div>
+                            <h6 class="mt-2">饮食建议</h6>
+                            <p class="mb-0 text-muted small">多补充维生素A</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+<script src="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.2.2/dist/echarts.min.js"></script>
+<script>
+    // 数据请求封装
+    function fetchAnalysisData() {
+        return fetch('/api/analysis')
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP错误! 状态码: ${response.status}`);
+                return response.json();
+            })
+            .then(rawData => {
+                // 数据预处理
+                return {
+                    feature_importance: processFeatureData(rawData.feature_importance),
+                    light_data: processLightData(rawData.light_data),
+                    layout_data: processLayoutData(rawData.layout_data),
+                    screen_data: processScreenData(rawData.screen_data)
+                };
+            });
+
+        function processFeatureData(data) {
+            return Object.entries(data).reduce((acc, [key, value]) => {
+                acc[key] = parseFloat(value) || 0;
+                return acc;
+            }, {});
+        }
+
+        function processLayoutData(data) {
+            return {
+                posture_rate: processObjectValues(data.posture_rate),
+                vision_rate: processObjectValues(data.vision_rate)
+            };
+
+            function processObjectValues(obj) {
+                return Object.keys(obj).reduce((acc, key) => {
+                    acc[key] = parseFloat(obj[key]) || 0;
+                    return acc;
+                }, {});
+            }
+        }
+
+        function processLightData(data) {
+            return {
+                categories: data.categories,
+                vision_rates: data.vision_rates.map(Number),
+                reading_times: data.reading_times.map(Number)
+            };
+        }
+
+        function processScreenData(data) {
+            return {
+                bins: data.bins,
+                counts: data.counts.map(Number)
+            };
+        }
+    }
+
+    // 特征重要性图表
+    function initFeatureChart(domElement, data) {
+        const chartData = Object.entries(data.feature_importance)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([name, value]) => ({
+                name: cleanFeatureName(name),
+                value: value
+            }));
+        const option = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {type: 'shadow'}
+            },
+            grid: {
+                left: '20%',
+                // right: '18%',
+                top: '15%',
+                bottom: '10%'
+            },
+            xAxis: {
+                type: 'value',
+                axisLabel: {
+                    formatter: value => value.toFixed(3)
+                }
+            },
+            yAxis: {
+                type: 'category',
+                data: chartData.map(d => d.name),
+                axisLabel: {
+                    fontSize: 12,
+                    formatter: value => value.length > 8 ?
+                        `${value.substring(0, 7)}...` : value
+                }
+            },
+            series: [{
+                name: '特征重要性',
+                type: 'bar',
+                data: chartData.map(d => d.value),
+                itemStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                        {offset: 0, color: '#3A86FF'},
+                        {offset: 1, color: '#6C5CE7'}
+                    ])
+                },
+                barWidth: '70%'
+            }]
+        };
+        const chart = echarts.init(domElement);
+        chart.setOption(option);
+        return chart;
+
+        function cleanFeatureName(name) {
+            return name.replace(/_/g, ' ').replace(/(^|\s)\S/g, t => t.toUpperCase());
+        }
+    }
+
+    // 灯光类型对比图表
+    function processLightData(data) {
+        return {
+            categories: data.categories,
+            // 将小数转换为百分比（保留1位小数）
+            vision_rates: data.vision_rates.map(v =>
+                parseFloat((v * 100).toFixed(1))),
+            // 保持原始小时单位（保留2位小数）
+            reading_times: data.reading_times.map(t =>
+                parseFloat(t.toFixed(2)))
+        };
+    }
+
+    // 更新后的光照图表配置
+    function initLightChart(domElement, data) {
+        const option = {
+            title: {
+                text: '光照类型与视力关系',
+                left: 'center',
+                textStyle: {
+                    fontSize: 16,
+                    fontWeight: 'bold'
+                }
+            },
+            tooltip: {
+                trigger: 'axis',
+                formatter: params => {
+                    return `${params[0].name}<br>
+                ${params[0].marker} ${params[0].seriesName}: ${params[0].value}%<br>
+                ${params[1].marker} ${params[1].seriesName}: ${params[1].value}小时`;
+                }
+            },
+            legend: {
+                data: ['视力正常率', '平均阅读时间'],
+                top: 30
+            },
+            xAxis: {
+                type: 'category',
+                data: data.categories,
+                axisLabel: {
+                    rotate: 30,
+                    margin: 15
+                }
+            },
+            yAxis: [{
+                type: 'value',
+                name: '视力正常率 (%)',
+                min: 0,
+                max: 100,
+                axisLabel: {
+                    formatter: '{value}%'
+                }
+            }, {
+                type: 'value',
+                name: '阅读时间 (小时)',
+                splitLine: {show: false},
+                axisLabel: {
+                    formatter: value => `${value}h`
+                },
+                min: Math.floor(Math.min(...data.reading_times) * 0.9),
+                max: Math.ceil(Math.max(...data.reading_times) * 1.1)
+            }],
+            series: [{
+                name: '视力正常率',
+                type: 'bar',
+                data: data.vision_rates,
+                itemStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        {offset: 0, color: '#00B894'},
+                        {offset: 1, color: '#00796B'}
+                    ]),
+                    borderRadius: [6, 6, 0, 0]
+                },
+                barWidth: '40%',
+                label: {
+                    show: true,
+                    position: 'top',
+                    formatter: '{c}%',
+                    color: '#00796B'
+                }
+            }, {
+                name: '平均阅读时间',
+                type: 'line',
+                yAxisIndex: 1,
+                data: data.reading_times,
+                smooth: true,
+                lineStyle: {
+                    color: '#FF9F43',
+                    width: 3
+                },
+                symbol: 'circle',
+                symbolSize: 10,
+                label: {
+                    show: true,
+                    position: 'bottom',
+                    formatter: '{c}h',
+                    color: '#FF9F43'
+                }
+            }]
+        };
+        const chart = echarts.init(domElement);
+        chart.setOption(option);
+        return chart;
+    }
+
+    // 桌椅布局雷达图 (重点修复)
+    function initLayoutChart(domElement, data) {
+        const layoutTypes = ["传统排列", "小组讨论式", "灵活组合"];
+
+        const option = {
+            title: {text: '不同桌椅布局对视力影响', left: 'center'},
+            tooltip: {trigger: 'item'},
+            legend: {
+                data: ['姿势正确率', '视力正常率'],
+                bottom: 10
+            },
+            radar: {
+                center: ['50%', '52%'],
+                radius: '70%',
+                startAngle: 90,
+                splitNumber: 4,
+                shape: 'polygon',
+                axisName: {
+                    color: '#666',
+                    fontSize: 12
+                },
+                indicator: layoutTypes.map(name => ({
+                    name: name,
+                    max: 1,
+                    color: '#666'
+                }))
+            },
+            series: [{
+                type: 'radar',
+                emphasis: {
+                    lineStyle: {width: 4},
+                    areaStyle: {opacity: 0.4}
+                },
+                data: [
+                    {
+                        value: getValues('posture_rate'),
+                        name: '姿势正确率',
+                        areaStyle: {color: 'rgba(255, 118, 117, 0.2)'},
+                        lineStyle: {color: '#FF7675', width: 2},
+                        itemStyle: {color: '#FF7675'}
+                    },
+                    {
+                        value: getValues('vision_rate'),
+                        name: '视力正常率',
+                        areaStyle: {color: 'rgba(58, 134, 255, 0.2)'},
+                        lineStyle: {color: '#3A86FF', width: 2},
+                        itemStyle: {color: '#3A86FF'}
+                    }
+                ]
+            }]
+        };
+        const chart = echarts.init(domElement);
+        chart.setOption(option);
+        return chart;
+
+        function getValues(type) {
+            return layoutTypes.map(t => {
+                const val = data.layout_data[type][t];
+                return typeof val === 'number' ? val : 0;
+            });
+        }
+    }
+
+    // 屏幕时间分布图表
+    function initScreenChart(domElement, data) {
+        const option = {
+            title: {text: '每日屏幕使用时间分布', left: 'center'},
+            tooltip: {trigger: 'axis'},
+            xAxis: {
+                type: 'category',
+                data: data.bins,
+                axisLabel: {rotate: 45}
+            },
+            yAxis: {type: 'value'},
+            series: [{
+                type: 'bar',
+                data: data.counts,
+                itemStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        {offset: 0, color: '#6C5CE7'},
+                        {offset: 1, color: '#3A86FF'}
+                    ])
+                },
+                barWidth: '80%'
+            }]
+        };
+        const chart = echarts.init(domElement);
+        chart.setOption(option);
+        return chart;
+    }
+
+    /* ========== 文件处理模块 ========== */
+    class FileHandler {
+        static init() {
+            // 绑定上传事件
+            document.getElementById('uploadBtn').addEventListener('click', () => {
+                document.getElementById('fileInput').click();
+            });
+
+            // 文件选择事件
+            document.getElementById('fileInput').addEventListener('change', (e) => {
+                this.handleFileUpload(e.target.files[0]);
+                e.target.value = ''; // 重置input
+            });
+            // 绑定下载事件
+            document.getElementById('downloadBtn').addEventListener('click', () => {
+                this.handleFileDownload();
+            });
+        }
+
+        // 文件上传处理
+        static async handleFileUpload(file) {
+            if (!file) return;
+
+            const btn = document.getElementById('uploadBtn');
+            const originalHTML = btn.innerHTML;
+
+            try {
+                this.toggleButtonState(btn, true, '上传中...', 'spinner');
+
+                const formData = new FormData();
+                formData.append('excel', file);
+
+                const response = await fetch('/api/analysis', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || '文件上传失败');
+                }
+                this.showToast('文件上传成功，正在更新数据...', 'success');
+
+                // 重新加载数据
+                const newData = await fetchAnalysisData();
+                refreshCharts(newData);
+
+            } catch (error) {
+                this.showToast(`上传失败: ${error.message}`, 'danger');
+            } finally {
+                this.toggleButtonState(btn, false, originalHTML, 'upload');
+            }
+        }
+
+        // 文件下载处理
+        static async handleFileDownload() {
+            const btn = document.getElementById('downloadBtn');
+            const originalHTML = btn.innerHTML;
+
+            try {
+                this.toggleButtonState(btn, true, '生成文件中...', 'spinner');
+
+                const response = await fetch('/download/family_file', {
+                    method: 'GET',
+                    // headers: {
+                    //     'Content-Type': 'application/json'
+                    // }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || '文件下载失败');
+                }
+                const filename = this.getFilenameFromHeaders(response);
+                const blob = await response.blob();
+
+                this.triggerBrowserDownload(blob, filename);
+                this.showToast('文件下载已开始', 'success');
+
+            } catch (error) {
+                this.showToast(`下载失败: ${error.message}`, 'danger');
+            } finally {
+                this.toggleButtonState(btn, false, originalHTML, 'download');
+            }
+        }
+
+        // 通用方法
+        static toggleButtonState(button, isLoading, text, icon) {
+            button.innerHTML = isLoading;
+            button.disabled = isLoading;
+        }
+
+        static showToast(message, type) {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type} position-fixed bottom-0 end-0 m-3`;
+            toast.innerHTML = `
+      <div class="toast-body d-flex align-items-center">
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+        ${message}
+      </div>
+    `;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        static getFilenameFromHeaders(response) {
+            const disposition = response.headers.get('Content-Disposition');
+            return disposition.split('filename=')[1].replace(/"/g, '') || 'school_data.xlsx';
+        }
+
+        static triggerBrowserDownload(blob, filename) {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }
+    }
+
+    /* ========== 图表刷新功能 ========== */
+    let activeCharts = [];
+
+    function refreshCharts(data) {
+        // 销毁旧图表
+        activeCharts.forEach(chart => chart.dispose());
+
+        // 创建新图表
+        activeCharts = [
+            initFeatureChart(document.getElementById('featureImportanceChart'), data),
+            initLightChart(document.getElementById('lightChart'), data.light_data),
+            initLayoutChart(document.getElementById('layoutChart'), data),
+            initScreenChart(document.getElementById('screenChart'), data)
+        ];
+        // 更新数据卡片
+        updateDataCards(data);
+    }
+
+    function updateDataCards(data) {
+        // 高风险率计算
+        const total = data.screen_data.counts.reduce((a, b) => a + b, 0);
+        const riskCount = data.screen_data.counts.slice(2).reduce((a, b) => a + b, 0);
+        document.getElementById('highRiskRate').textContent =
+            `${((riskCount / total) * 100).toFixed(1)}%`;
+    }
+
+    /* ========== 初始化入口 ========== */
+    document.addEventListener('DOMContentLoaded', async () => {
+        FileHandler.init(); // 初始化文件处理器
+
+        try {
+            const data = await fetchAnalysisData();
+            activeCharts = [
+                initFeatureChart(document.getElementById('featureImportanceChart'), data),
+                initLightChart(document.getElementById('lightChart'), data.light_data),
+                initLayoutChart(document.getElementById('layoutChart'), data),
+                initScreenChart(document.getElementById('screenChart'), data)
+            ];
+            updateDataCards(data);
+        } catch (error) {
+            console.error('初始化失败:', error);
+            document.querySelectorAll('.chart-container').forEach(container => {
+                container.innerHTML = `<div class="alert alert-danger">数据加载失败: ${error.message}</div>`;
+            });
+        }
+
+        // 窗口resize处理
+        window.addEventListener('resize', () => {
+            activeCharts.forEach(chart => chart.resize());
+        });
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>青少年近视防控决策系统</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-blue: #1A4D8F;
+            --health-green: #00B894;
+        }
+
+        HTML
+
+        <!--
+        在原有样式基础上新增以下CSS
+
+        -->
+        <
+        style >
+            /* 新增图表美化样式 */
+        .chart-container {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease;
+        }
+
+        .chart-container:hover {
+            transform: translateY(-5px);
+        }
+
+        /* 年龄分布图配色 */
+        .age-bar-chart {
+            --bar-color-1: #6C5CE7;
+            --bar-color-2: #3A86FF;
+            --bar-color-3: #00B894;
+        }
+
+        /* 近视程度饼图配色 */
+        .myopia-pie {
+            --pie-color-1: #D63031;
+            --pie-color-2: #FF7675;
+            --pie-color-3: #FDCB6E;
+            --pie-color-4: #00B894;
+        }
+
+        /* 地图容器美化 */
+        .map-container {
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            overflow: hidden;
+            background: linear-gradient(145deg, #f8f9fa, #ffffff);
+        }
+
+        .data-header {
+            background: linear-gradient(135deg, var(--primary-blue) 0%, #3A86FF 100%);
+            padding: 80px 0 60px;
+        }
+
+        .bg-purple {
+            background-color: #6C5CE7;
+        }
+
+        .bg-orange {
+            background-color: #FF9F43;
+        }
+
+        .bg-blue {
+            background-color: #3A86FF;
+        }
+
+        .bg-pink {
+            background-color: #FF7675;
+        }
+
+        .ratio-bar {
+            height: 6px;
+            border-radius: 3px;
+            overflow: hidden;
+            background: #f0f0f0;
+            display: flex;
+        }
+
+        .gene-table td {
+            padding: 0.25rem;
+            border-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .gene-table tr:first-child td {
+            color: #00B894;
+        }
+
+        .gene-table tr:nth-child(2) td {
+            color: #FDCB6E;
+        }
+
+        .gene-table tr:last-child td {
+            color: #D63031;
+        }
+
+        .dashboard-card {
+            border: 1px solid rgba(0, 0, 0, 0.12); /* 柔和边框 */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), /* 主阴影 */ 0 2px 4px rgba(0, 0, 0, 0.04); /* 次阴影 */
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* 悬停效果增强 */
+        .dashboard-card:hover {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12),
+            0 4px 8px rgba(0, 0, 0, 0.06);
+            transform: translateY(-2px);
+        }
+
+        /* 图标容器阴影 */
+        .dashboard-icon {
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        }
+
+        /* 警告框特殊阴影 */
+        .alert-warning {
+            box-shadow: 0 2px 4px rgba(222, 168, 33, 0.2);
+        }
+
+        /* 表格行阴影 */
+        .gene-table tr {
+            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        .map-visual {
+            height: 400px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+
+        .risk-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+<!-- 导航栏 -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top">
+    <div class="container">
+        <a class="navbar-brand" href="#">
+            <i class="fas fa-eye me-2"></i>
+            明视防控决策系统 v3.0
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link active" href="#">首页</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('dataType_2_1')}}">智能分析</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('dataType_3_1')}}">防控现状</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('dataType')}}">科学护眼</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('familyEye')}}">家庭用眼习惯指导</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('schoolEye')}}">校园用眼习惯指导</a></li>
+
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- 数据概览头部 -->
+<header class="data-header text-white">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h1 class="display-4 mb-4">
+                    青少年近视防控智能决策平台
+                </h1>
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="h2 mb-0">6.2亿+</div>
+                            <small class="text-light">学生视力数据</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="h2 mb-0">82%</div>
+                            <small class="text-light">防控策略有效率</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <div class="h2 mb-0">300+</div>
+                            <small class="text-light">合作医疗机构</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 mt-4 mt-lg-0">
+                <div class="bg-white rounded-3 p-3 shadow">
+                    <div id="riskChart" style="height: 250px"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- 核心功能模块 -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <h2 class="text-center mb-5"><i class="fas fa-brain me-2"></i>智能分析模块</h2>
+        <div class="row g-4">
+            <!-- 风险预警 -->
+            <div class="col-md-3 col-xl-3">
+                <div class="dashboard-card bg-white p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-primary text-white rounded-circle p-3 me-3">
+                            <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        </div>
+                        <h4 class="mb-0">风险预警</h4>
+                    </div>
+                    <p class="text-muted">实时监测区域近视率变化趋势，提前3-6个月预警风险</p>
+                    <div class="alert alert-warning p-2">
+                        当前高风险区域：华东地区
+                        <span class="risk-indicator bg-danger ms-2"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 策略推荐 -->
+            <div class="col-md-3 col-xl-3">
+                <div class="dashboard-card bg-white p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-blue text-white rounded-circle p-3 me-3">
+                            <i class="fas fa-lightbulb fa-2x"></i>
+                        </div>
+                        <h4 class="mb-0">策略推荐</h4>
+                    </div>
+                    <p class="text-muted">基于百万案例的个性化防控方案推荐</p>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            户外活动增强方案
+                        </li>
+                        <li>
+                            <i class="fas fa-check-circle text-success me-2"></i>
+                            教室光照优化方案
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="col-md-3 col-xl-3">
+                <div class="dashboard-card bg-white p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-orange text-white rounded-circle p-3 me-3">
+                            <i class="fas fa-robot fa-2x"></i>
+                        </div>
+                        <h4 class="mb-0">技术应用分析</h4>
+                    </div>
+                    <p class="text-muted">AI辅助诊断技术覆盖情况</p>
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="display-5 me-3">95.6%</div>
+                        <div class="text-success small">
+                            <i class="fas fa-arrow-up"></i> 12.3%
+                        </div>
+                    </div>
+                    <div class="sparkline" data-sparkline="95,96,97,95,96,98,95">
+                        <!-- 微型趋势图 -->
+                        <canvas class="sparkline-chart" width="100" height="30"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 col-xl-3">
+                <div class="dashboard-card bg-white p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-pink text-white rounded-circle p-3 me-3">
+                            <i class="fas fa-dna fa-2x"></i>
+                        </div>
+                        <h4 class="mb-0">遗传因素分析</h4>
+                    </div>
+                    <p class="text-muted">家族史对近视发展影响</p>
+                    <table class="table table-sm gene-table">
+                        <tr>
+                            <td>父母无近视</td>
+                            <td class="text-end">23.1%</td>
+                        </tr>
+                        <tr>
+                            <td>单亲近视</td>
+                            <td class="text-end">58.4%</td>
+                        </tr>
+                        <tr>
+                            <td>双亲近视</td>
+                            <td class="text-end">82.7%</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="container">
+    <h3 class="mb-4"><i class="fas fa-chart-line me-2"></i>近视数据分析</h3>
+
+    <!-- 第一行：年龄分布与近视程度 -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-8">
+            <div class="chart-container age-bar-chart">
+                <div id="ageChart" style="height:350px"></div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="chart-container myopia-pie">
+                <div id="degreeChart" style="height:350px"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 第二行：历年趋势 -->
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="chart-container">
+                <div id="trendChart" style="height:400px"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script src="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+<!-- 可视化图表库 -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.2.2/dist/echarts.min.js"></script>
+<script>
+    // 初始化风险趋势图表
+    const chart = echarts.init(document.getElementById('riskChart'));
+    chart.setOption({
+        tooltip: {trigger: 'axis'},
+        xAxis: {data: ['1月', '2月', '3月', '4月', '5月', '6月']},
+        yAxis: {type: 'value'},
+        series: [{
+            data: [5.3, 5.8, 6.2, 6.7, 7.1, 7.4],
+            type: 'line',
+            smooth: true,
+            areaStyle: {color: 'rgba(58,134,255,0.1)'},
+            lineStyle: {color: '#3A86FF', width: 3}
+        }]
+    });
+
+    const ageChart = echarts.init(document.getElementById('ageChart'));
+    ageChart.setOption({
+        title: {
+            text: '各年龄段近视率分布',
+            left: 'center',
+            textStyle: {
+                color: '#2d3436',
+                fontSize: 18
+            }
+        },
+        tooltip: {
+            trigger: 'axis',
+            formatter: '年龄段 {b}<br/>近视率 {c}%',
+            backgroundColor: 'rgba(255,255,255,0.95)',
+            borderWidth: 0
+        },
+        xAxis: {
+            type: 'category',
+            data: ['6-8岁', '9-12岁', '13-15岁', '16-18岁'],
+            axisLabel: {
+                color: '#636e72'
+            }
+        },
+        yAxis: {
+            type: 'value',
+            axisLabel: {
+                formatter: '{value}%',
+                color: '#636e72'
+            }
+        },
+        series: [{
+            data: [14.5, 38.2, 67.8, 81.4],
+            type: 'bar',
+            itemStyle: {
+                color: params => {
+                    const colors = ['#6C5CE7', '#3A86FF', '#00B894', '#FDCB6E'];
+                    return colors[params.dataIndex];
+                },
+                borderRadius: [6, 6, 0, 0]
+            },
+            barWidth: '45%'
+        }]
+    });
+
+    // 近视程度饼图
+    const degreeChart = echarts.init(document.getElementById('degreeChart'));
+    degreeChart.setOption({
+        title: {
+            text: '近视程度分布',
+            left: 'center',
+            textStyle: {
+                color: '#2d3436',
+                fontSize: 18
+            }
+        },
+        tooltip: {
+            formatter: '{b}: {d}%',
+            backgroundColor: 'rgba(255,255,255,0.95)'
+        },
+        series: [{
+            type: 'pie',
+            radius: ['40%', '70%'],
+            data: [
+                {value: 15, name: '正常视力'},
+                {value: 35, name: '轻度近视'},
+                {value: 28, name: '中度近视'},
+                {value: 22, name: '高度近视'}
+            ],
+            itemStyle: {
+                color: params => ['#00B894', '#FDCB6E', '#FF7675', '#D63031'][params.dataIndex]
+            },
+            label: {
+                color: '#636e72',
+                fontSize: 14
+            }
+        }]
+    });
+
+    // 历年趋势折线图
+    const trendChart = echarts.init(document.getElementById('trendChart'));
+    trendChart.setOption({
+        title: {
+            text: '青少年近视率变化趋势',
+            left: 'center',
+            textStyle: {
+                color: '#2d3436',
+                fontSize: 18
+            }
+        },
+        tooltip: {
+            trigger: 'axis',
+            formatter: '年份 {b}<br/>近视率 {c}%',
+            backgroundColor: 'rgba(255,255,255,0.95)'
+        },
+        xAxis: {
+            type: 'category',
+            data: ['2015', '2016', '2017', '2018', '2019', '2020', '2021', '2022'],
+            axisLabel: {
+                color: '#636e72'
+            }
+        },
+        yAxis: {
+            type: 'value',
+            axisLabel: {
+                formatter: '{value}%',
+                color: '#636e72'
+            }
+        },
+        series: [{
+            data: [38.5, 41.2, 45.6, 49.3, 53.1, 57.8, 62.4, 67.2],
+            type: 'line',
+            smooth: true,
+            lineStyle: {
+                color: '#3A86FF',
+                width: 4
+            },
+            areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    {offset: 0, color: 'rgba(58,134,255,0.3)'},
+                    {offset: 1, color: 'rgba(58,134,255,0.01)'}
+                ])
+            },
+            symbol: 'circle',
+            symbolSize: 10
+        }]
+    });
+
+    // 窗口大小变化时自动调整图表
+    window.addEventListener('resize', () => {
+        ageChart.resize();
+        degreeChart.resize();
+        trendChart.resize();
+    });
+</script>
+</body>
+</html>

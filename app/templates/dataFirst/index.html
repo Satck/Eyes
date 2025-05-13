@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>科学护眼指南</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --healthy-green: #00B894;
+            --warning-orange: #FDCB6E;
+            --critical-red: #D63031;
+        }
+
+        .eye-care-nav {
+            background: linear-gradient(135deg, #2A5C82 0%, #3A86FF 100%);
+        }
+
+        .condition-card {
+            border-left: 5px solid;
+            border-radius: 12px;
+            transition: transform 0.3s;
+        }
+
+        .condition-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .prevention-timeline {
+            border-left: 3px solid var(--healthy-green);
+            position: relative;
+            padding-left: 30px;
+        }
+
+        .btn-return {
+            color: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            padding: 0.5rem 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-return:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateX(5px);
+        }
+
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .btn-return {
+                padding: 0.4rem 1rem;
+                font-size: 0.9rem;
+            }
+
+            .btn-return i {
+                margin-right: 0 !important;
+            }
+
+            .btn-return span {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- 导航栏 -->
+<nav class="navbar navbar-expand-lg navbar-dark eye-care-nav fixed-top">
+    <div class="container">
+        <a class="navbar-brand" href="#">
+            <i class="fas fa-eye me-2"></i>
+            科学护眼指南
+        </a>
+        <!-- 添加返回按钮 -->
+        <a href="{{ url_for('index')}}" class="btn btn-return ms-auto">
+            <i class="fas fa-home me-2"></i>
+            返回首页
+        </a>
+    </div>
+</nav>
+
+<!-- 分类导航 -->
+<section class="py-5 mt-5">
+    <div class="container">
+        <div class="row g-4 justify-content-center">
+            <div class="col-md-4">
+                <div class="condition-card card h-100 border-start border-success shadow">
+                    <div class="card-body">
+                        <h3 class="text-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            非近视养护
+                        </h3>
+                        <div class="prevention-timeline mt-4">
+                            <div class="mb-4">
+                                <h5>20-20-20法则</h5>
+                                <p>每20分钟看20英尺外20秒</p>
+                                <small class="text-muted">美国眼科学会推荐</small>
+                            </div>
+                            <div class="mb-4">
+                                <h5>光照要求</h5>
+                                <p>阅读环境≥300勒克斯照度</p>
+                                <div class="progress">
+                                    <div class="progress-bar" style="width: 75%">达标率75%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="condition-card card h-100 border-start border-warning shadow">
+                    <div class="card-body">
+                        <h3 class="text-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            轻度近视(≤300度)
+                        </h3>
+                        <div class="alert alert-warning mt-3">
+                            <h5>核心策略</h5>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-running me-2"></i>每日户外活动≥2小时</li>
+                                <li><i class="fas fa-sun me-2"></i>自然光照暴露≥10000lux</li>
+                            </ul>
+                        </div>
+                        <table class="table">
+                            <thead>
+                            <tr>
+                                <th>干预手段</th>
+                                <th>有效率</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                                <td>离焦眼镜</td>
+                                <td>51%</td>
+                            </tr>
+                            <tr>
+                                <td>低浓度阿托品</td>
+                                <td>60%</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="condition-card card h-100 border-start border-danger shadow">
+                    <div class="card-body">
+                        <h3 class="text-danger">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            高度近视(≥600度)
+                        </h3>
+                        <div class="alert alert-danger mt-3">
+                            <h5>年度必查项目</h5>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-eye-dropper me-2"></i>眼轴长度监测</li>
+                                <li><i class="fas fa-camera me-2"></i>眼底OCT检查</li>
+                            </ul>
+                        </div>
+                        <div class="risk-factors">
+                            <h5>风险预警指标</h5>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <div class="bg-light p-2 text-center rounded">
+                                        <small>眼轴＞26mm</small>
+                                        <div class="text-danger">高风险</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="bg-light p-2 text-center rounded">
+                                        <small>矫正视力＜0.8</small>
+                                        <div class="text-warning">中风险</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 对比分析 -->
+        <div class="row mt-5">
+            <div class="col-md-12">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <h4><i class="fas fa-chart-bar me-2"></i>干预效果对比分析</h4>
+                        <div class="row">
+                            <div class="col-md-9">
+                                <div id="effectChart" style="height: 300px"></div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="alert alert-info">
+                                    <h6>数据说明</h6>
+                                    <small>基于2023年临床研究数据<br>
+                                        样本量：n=5,200</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script src="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.2.2/dist/echarts.min.js"></script>
+<script>
+    // 初始化效果对比图表
+    const effectChart = echarts.init(document.getElementById('effectChart'));
+    effectChart.setOption({
+        tooltip: {trigger: 'axis'},
+        xAxis: {
+            data: ['框架眼镜', '角膜塑形镜', '离焦眼镜', '阿托品滴眼液'],
+            axisLabel: {rotate: 45}
+        },
+        yAxis: {name: '近视控制率 (%)'},
+        series: [{
+            data: [30, 55, 51, 60],
+            type: 'bar',
+            itemStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    {offset: 0, color: '#3A86FF'},
+                    {offset: 1, color: '#2A5C82'}
+                ])
+            }
+        }]
+    });
+</script>
+</body>
+</html>

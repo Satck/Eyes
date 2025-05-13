@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>智能分析</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --healthy-green: #00B894;
+            --warning-orange: #FDCB6E;
+            --critical-red: #D63031;
+            --primary-blue: #3A86FF;
+        }
+
+        .eye-care-nav {
+            background: linear-gradient(135deg, #2A5C82 0%, var(--primary-blue) 100%);
+        }
+
+        .condition-card {
+            border-left: 5px solid;
+            border-radius: 12px;
+            transition: transform 0.3s;
+        }
+
+        .condition-card:hover {
+            transform: translateY(-5px);
+        }
+
+        /* 智能分析模块新增样式 */
+        .analysis-header {
+            background: linear-gradient(95deg, #f8f9fa 0%, #fff 30%);
+            border-radius: 12px;
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .analysis-header::before {
+            content: "";
+            position: absolute;
+            right: -50px;
+            top: -50px;
+            width: 150px;
+            height: 150px;
+            background: rgba(58, 134, 255, 0.05);
+            border-radius: 50%;
+        }
+
+        .param-card {
+            border: 1px solid rgba(58, 134, 255, 0.15);
+            border-radius: 10px;
+            padding: 1.25rem;
+            transition: all 0.3s;
+        }
+
+        .param-card:hover {
+            box-shadow: 0 0.5rem 1rem rgba(58, 134, 255, 0.1);
+        }
+
+        .risk-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .dynamic-chart {
+            height: 220px;
+            transition: height 0.3s ease;
+        }
+
+        .btn-return {
+            color: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            padding: 0.5rem 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .param-card:focus-within {
+            border-color: var(--primary-blue) !important;
+            box-shadow: 0 0 0 3px rgba(58, 134, 255, 0.1);
+        }
+
+        /* 输入框基础样式 */
+        .param-card input {
+            border: 1px solid rgba(0, 0, 0, 0.1) !important;
+            border-radius: 8px !important;
+            padding: 0.75rem 1rem !important;
+            background: rgba(255, 255, 255, 0.9) !important;
+            transition: all 0.3s ease !important;
+        }
+
+        /* 输入框聚焦状态 */
+        .param-card input:focus {
+            border-color: var(--primary-blue) !important;
+            box-shadow: 0 0 0 3px rgba(58, 134, 255, 0.1) !important;
+            background: white !important;
+        }
+
+        /* 输入框悬停状态 */
+        .param-card:hover input {
+            border-color: rgba(58, 134, 255, 0.5) !important;
+        }
+
+        /* 数字输入框右侧间距调整 */
+        .param-card input[type="number"] {
+            padding-right: 0.5rem !important;
+        }
+
+        /* 输入标签样式增强 */
+        .param-card .form-label {
+            font-weight: 500 !important;
+            color: #495057 !important;
+            letter-spacing: 0.5px;
+        }
+
+        /* 输入组样式调整 */
+        .input-group-text {
+            background: rgba(255, 255, 255, 0.9) !important;
+            border: 1px solid rgba(0, 0, 0, 0.1) !important;
+            border-left: none !important;
+            color: #6c757d !important;
+        }
+
+        @media (max-width: 768px) {
+            .dynamic-chart {
+                height: 180px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- 导航栏 -->
+<nav class="navbar navbar-expand-lg navbar-dark eye-care-nav fixed-top">
+    <div class="container">
+        <a class="navbar-brand" href="#">
+            <i class="fas fa-eye me-2"></i>
+            科学护眼指南
+        </a>
+        <!-- 添加返回按钮 -->
+        <a href="{{ url_for('index')}}" class="btn btn-return ms-auto">
+            <i class="fas fa-home me-2"></i>
+            返回首页
+        </a>
+    </div>
+</nav>
+
+<!-- 智能分析模块 -->
+<section class="py-5 mt-5">
+    <div class="container">
+        <div class="analysis-header shadow-sm">
+            <div class="row g-4">
+                <div class="col-lg-7">
+                    <h3 class="text-primary mb-3">
+                        <i class="fas fa-brain me-2"></i>
+                        近视发展智能预测系统
+                    </h3>
+                    <form id="aiAnalysisForm" class="row g-3">
+                        <!-- 第一行参数 -->
+                        <div class="col-12">
+                            <div class="alert alert-primary d-flex align-items-center">
+                                <i class="fas fa-id-badge me-3 fs-4"></i>
+                                <div>
+                                    <span class="small d-block text-muted">患者标识</span>
+                                    <span id="generatedId" class="fw-bold">正在生成...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 生物参数 -->
+                        <div class="col-md-6">
+                            <div class="param-card p-3">
+                                <label class="form-label small text-muted mb-2">
+                                    <i class="fas fa-ruler-horizontal me-2"></i>眼轴长度 (mm)
+                                </label>
+                                <input type="number" class="form-control" name="axial_length"
+                                       min="20" max="35" step="any" required>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="param-card p-3">
+                                <label class="form-label small text-muted mb-2">
+                                    <i class="fas fa-eye me-2"></i>SER (D)
+                                </label>
+                                <input type="number" class="form-control" name="ser"
+                                       min="-25" max="10" step="any" required>
+                            </div>
+                        </div>
+
+                        <!-- 角膜参数 -->
+                        <div class="col-md-4">
+                            <div class="param-card p-3">
+                                <label class="form-label small text-muted mb-2">
+                                    <i class="fas fa-circle-notch me-2"></i>K1 (D)
+                                </label>
+                                <input type="number" class="form-control" name="k1"
+                                       min="38" max="48" step="any" required>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="param-card p-3">
+                                <label class="form-label small text-muted mb-2">
+                                    <i class="fas fa-percent me-2"></i>AL Ratio
+                                </label>
+                                <input type="number" class="form-control" name="al_ratio"
+                                       min="2.5" max="8.0" step="any" required>
+                            </div>
+                        </div>
+
+                        <!-- 新增参数 -->
+                        <div class="col-md-4">
+                            <div class="param-card p-3">
+                                <label class="form-label small text-muted mb-2">
+                                    <i class="fas fa-clock me-2"></i>屏幕时间
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" name="screen_time"
+                                           min="0" max="24" step="any" required>
+                                    <span class="input-group-text">小时/天</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 性别与遗传风险 -->
+                        <div class="col-md-6">
+                            <div class="param-card p-3">
+                                <label class="form-label small text-muted mb-2">
+                                    <i class="fas fa-venus-mars me-2"></i>性别
+                                </label>
+                                <select class="form-select" name="gender" required>
+                                    <option value="male">男</option>
+                                    <option value="female">女</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="param-card p-3">
+                                <label class="form-label small text-muted mb-2">
+                                    <i class="fas fa-dna me-2"></i>遗传风险
+                                </label>
+                                <select class="form-select" name="genetic_risk" required>
+                                    <option value="0">无家族史</option>
+                                    <option value="0.25">父母单方近视</option>
+                                    <option value="0.5">父母双方近视</option>
+                                    <option value="0.75">父母高度近视</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- 观察周期 -->
+                        <div class="col-md-12">
+                            <div class="param-card p-3">
+                                <label class="form-label small text-muted mb-2">
+                                    <i class="fas fa-calendar-alt me-2"></i>观察周期
+                                </label>
+                                <select class="form-select" name="observation_period" required>
+                                    <option value="3" selected>3个月</option>
+                                    <option value="6">6个月</option>
+                                    <option value="12">12个月</option>
+                                    <option value="18">18个月</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- 提交按钮 -->
+                        <div class="col-12 mt-3">
+                            <button type="submit" class="btn btn-primary px-4 py-2">
+                                <i class="fas fa-rocket me-2"></i>生成预测报告
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 模型说明 -->
+                <div class="col-lg-5">
+                    <div class="bg-light p-4 rounded-3 h-100">
+                        <h6 class="text-muted mb-3"><i class="fas fa-microchip me-2"></i>模型信息</h6>
+                        <div class="d-flex mb-3">
+                            <div class="me-4">
+                                <div class="text-primary fw-bold">MyopiaPredictor 1.7</div>
+                                <small class="text-muted">近视预测模型</small>
+                            </div>
+                            <div>
+                                <div class="text-primary fw-bold">ACC 0.99</div>
+                                <small class="text-muted">预测准确率</small>
+                            </div>
+                        </div>
+                        <div class="progress mb-4" style="height: 6px;">
+                            <div class="progress-bar bg-primary" style="width: 93%"></div>
+                        </div>
+
+                        <!-- 新增参数解释 -->
+                        <div class="param-definition mb-4">
+                            <h6 class="text-muted mb-3"><i class="fas fa-eye me-2"></i>核心参数说明</h6>
+                            <dl class="row">
+                                <dt class="col-sm-5 fw-normal">
+                                    <i class="fas fa-ruler-horizontal text-primary me-2"></i>眼轴长度 (mm)
+                                </dt>
+                                <dd class="col-sm-7 text-muted">
+                                    眼球前后径长度<br>
+                                    <small>正常范围：22-24mm</small>
+                                </dd>
+
+                                <dt class="col-sm-5 fw-normal mt-2">
+                                    <i class="fas fa-eye text-primary me-2"></i>SER (D)
+                                </dt>
+                                <dd class="col-sm-7 text-muted mt-2">
+                                    等效球镜度数<br>
+                                    <small>负值代表近视度数</small>
+                                </dd>
+
+                                <dt class="col-sm-5 fw-normal mt-2">
+                                    <i class="fas fa-circle-notch text-primary me-2"></i>K1 (D)
+                                </dt>
+                                <dd class="col-sm-7 text-muted mt-2">
+                                    角膜前表面曲率半径<br>
+                                    <small>正常值：43-44D</small>
+                                </dd>
+
+                                <dt class="col-sm-5 fw-normal mt-2">
+                                    <i class="fas fa-percent text-primary me-2"></i>AL Ratio
+                                </dt>
+                                <dd class="col-sm-7 text-muted mt-2">
+                                    眼轴与角膜曲率比值<br>
+                                    <small>预警阈值：＞3.0</small>
+                                </dd>
+                            </dl>
+                        </div>
+
+                        <small class="text-muted">
+                            训练数据：三甲医院3年临床追踪数据<br>
+                            特征维度：12个眼部生物参数
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 预测结果 -->
+        <div id="aiResult" class="mt-4" style="display:none;">
+            <div class="card shadow">
+                <div class="card-header text-white" id="riskHeader">
+                    <div class="d-flex align-items-center">
+                        <i id="riskIcon" class="fas fa-smile"></i>
+                        <div class="ms-3">
+                            <h4 class="mb-0" id="riskLevel">非近视</h4>
+                            <small>当前风险状态</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-4">
+                                <h5>风险分布</h5>
+                                <div id="pieChart" style="height:200px"></div>
+                            </div>
+                            <div class="alert alert-light">
+                                <i class="fas fa-chart-line me-2"></i>
+                                高风险概率: <span id="riskValue">0%</span>
+                            </div>
+                        </div>
+
+                        <div class="col-md-8">
+                            <h5>发展趋势预测</h5>
+                            <div id="trendChart" style="height:300px"></div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h5 class="mt-4"><i class="fas fa-lightbulb me-2"></i>干预建议</h5>
+                    <div class="row" id="adviceContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 原有分类导航和对比分析模块保持原样 -->
+
+<script src="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.2.2/dist/echarts.min.js"></script>
+<script>
+    function generatePatientId() {
+        const date = new Date();
+        const datePart = `${date.getFullYear().toString().slice(-2)}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
+        const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
+        return `MYOPIA-${datePart}-${randomPart}`;
+    }
+
+    // DOM加载完成后初始化
+    document.addEventListener('DOMContentLoaded', () => {
+        const idElement = document.getElementById('generatedId');
+        if (idElement) {
+            idElement.textContent = generatePatientId();
+        } else {
+            console.error('无法定位患者标识元素');
+        }
+    });
+    // 风险等级配置映射
+    const RISK_PROFILES = {
+        0: {
+            level: "非近视",
+            color: "#00B894",
+            icon: "fa-smile",
+            probability: [0.85, 0.1, 0.04, 0.01],  // 各等级概率分布
+            trend: [0.1, 0.15, 0.2, 0.25, 0.3],     // 趋势数据
+            advice: [                                // 建议内容
+                {icon: "fa-sun", title: "户外活动", content: "保持每日2小时户外时间", type: "success"},
+                {icon: "fa-book", title: "用眼习惯", content: "遵循20-20-20法则", type: "info"}
+            ]
+        },
+        1: {
+            level: "轻度近视",
+            color: "#FDCB6E",
+            icon: "fa-glasses",
+            probability: [0.2, 0.65, 0.1, 0.05],
+            trend: [0.3, 0.4, 0.5, 0.6, 0.7],
+            advice: [
+                {icon: "fa-eye", title: "光学矫正", content: "建议使用离焦型镜片", type: "warning"},
+                {icon: "fa-clock", title: "屏幕时间", content: "控制在每日3小时以内", type: "warning"}
+            ]
+        },
+        2: {
+            level: "中度近视",
+            color: "#FF7675",
+            icon: "fa-eye-slash",
+            probability: [0.05, 0.2, 0.6, 0.15],
+            trend: [0.5, 0.6, 0.7, 0.8, 0.85],
+            advice: [
+                {icon: "fa-clinic-medical", title: "医疗干预", content: "建议角膜塑形镜验配", type: "danger"},
+                {icon: "fa-calendar-check", title: "复查周期", content: "每2个月复查眼轴", type: "warning"}
+            ]
+        },
+        3: {
+            level: "重度近视",
+            color: "#D63031",
+            icon: "fa-exclamation-triangle",
+            probability: [0.01, 0.05, 0.2, 0.74],
+            trend: [0.7, 0.75, 0.8, 0.85, 0.9],
+            advice: [
+                {icon: "fa-hospital", title: "专科就诊", content: "立即预约眼底检查", type: "danger"},
+                {icon: "fa-dna", title: "基因检测", content: "建议遗传学检测", type: "danger"}
+            ]
+        }
+    };
+
+    // 表单提交处理
+    document.getElementById('aiAnalysisForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+
+        try {
+            // 显示加载状态
+            submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin me-2"></i>分析中...`;
+            submitBtn.disabled = true;
+
+            const formData = {
+                patient_id: document.getElementById('generatedId').textContent,
+                axial_length: parseFloat(e.target.axial_length.value),
+                ser: parseFloat(e.target.ser.value),
+                k1: parseFloat(e.target.k1.value),
+                al_ratio: parseFloat(e.target.al_ratio.value),
+                screen_time: parseFloat(e.target.screen_time.value),
+                gender: e.target.gender.value,
+                genetic_risk: parseInt(e.target.genetic_risk.value),
+                observation_period: parseInt(e.target.observation_period.value)
+            };
+
+
+            // 实际调用API接口（示例使用fetch）
+            const response = await fetch('/predict', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(formData)
+            });
+
+            if (!response.ok) throw new Error('请求失败');
+            const resultCode = await response.json(); // 返回{code: 0}
+
+            // 获取对应的展示配置
+            const displayData = RISK_PROFILES[resultCode.code];
+
+            if (!displayData) throw new Error('无效的风险代码');
+
+            // 更新界面
+            updateDisplay(displayData);
+            document.getElementById('aiResult').style.display = 'block';
+
+        } catch (error) {
+            showError(error.message);
+        } finally {
+            submitBtn.innerHTML = `<i class="fas fa-redo me-2"></i>重新分析`;
+            submitBtn.disabled = false;
+        }
+    });
+
+    // 获取表单数据
+    function getFormData(form) {
+        return {
+            axial_length: form.axial_length.value,
+            ser: form.ser.value,
+            age: form.age.value,
+            gender: form.gender.value,
+            race: form.race.value,
+            myopia: form.myopia.value,
+            family_history: form.family_history.value,
+            astigmatism: form.astigmatism.value,
+            // 其他表单字段...
+        };
+    }
+
+    // 更新展示内容
+    function updateDisplay(data) {
+        // 更新风险卡片
+        document.getElementById('riskLevel').textContent = data.level;
+        document.getElementById('riskValue').textContent = `${(data.probability[3] * 100).toFixed(1)}%`;
+        document.getElementById('riskIcon').className = `fas ${data.icon} fa-3x`;
+        document.getElementById('riskHeader').style.backgroundColor = data.color;
+
+        // 更新饼图
+        renderPieChart(data.probability, data.color);
+
+        // 更新趋势图
+        renderTrendChart(data.trend);
+
+        // 更新建议
+        renderAdvice(data.advice);
+    }
+
+    // 饼图渲染
+    function renderPieChart(probabilities, color) {
+        const chart = echarts.init(document.getElementById('pieChart'));
+        chart.setOption({
+            tooltip: {formatter: '{b}: {c}%'},
+            series: [{
+                type: 'pie',
+                radius: '70%',
+                data: [
+                    {value: probabilities[0] * 100, name: '非近视'},
+                    {value: probabilities[1] * 100, name: '轻度近视'},
+                    {value: probabilities[2] * 100, name: '中度近视'},
+                    {value: probabilities[3] * 100, name: '重度近视'}
+                ],
+                itemStyle: {
+                    color: [color, '#FDCB6E', '#FF7675', '#D63031']
+                }
+            }]
+        });
+    }
+
+    // 趋势图渲染
+    function renderTrendChart(trendData) {
+        const chart = echarts.init(document.getElementById('trendChart'));
+        chart.setOption({
+            xAxis: {
+                type: 'category',
+                data: ['当前', '3月', '6月', '9月', '12月']
+            },
+            yAxis: {type: 'value', axisLabel: {formatter: '{value}%'}},
+            series: [{
+                data: trendData.map(v => (v * 100).toFixed(1)),
+                type: 'line',
+                smooth: true,
+                lineStyle: {width: 3, color: '#3A86FF'},
+                areaStyle: {color: 'rgba(58,134,255,0.1)'}
+            }]
+        });
+    }
+
+    // 建议渲染
+    function renderAdvice(adviceList) {
+        const container = document.getElementById('adviceContainer');
+        container.innerHTML = adviceList.map(adv => `
+        <div class="col-md-6 mb-3">
+            <div class="alert alert-${adv.type} d-flex align-items-center">
+                <i class="fas ${adv.icon} fa-2x me-3"></i>
+                <div>
+                    <h6 class="mb-1">${adv.title}</h6>
+                    <p class="mb-0 small">${adv.content}</p>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    }
+
+    // 错误处理
+    function showError(msg) {
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-danger position-fixed top-0 end-0 m-4';
+        alert.style.zIndex = 9999;
+        alert.innerHTML = `<i class="fas fa-exclamation-circle me-2"></i>${msg}`;
+        document.body.appendChild(alert);
+        setTimeout(() => alert.remove(), 5000);
+    }
+</script>
+</body>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.2.2/dist/echarts.min.js"></script>
+<script>
+    // 增强版图表初始化函数
+    let pieChart, trendChart;
+
+    function initCharts() {
+        // 初始化图表实例
+        pieChart = echarts.init(document.getElementById('pieChart'));
+        trendChart = echarts.init(document.getElementById('trendChart'));
+
+        // 窗口大小变化时自动调整
+        window.addEventListener('resize', () => {
+            pieChart.resize();
+            trendChart.resize();
+        });
+    }
+
+    // 修改后的updateDisplay函数
+    function updateDisplay(data) {
+        // 显示结果容器
+        const resultContainer = document.getElementById('aiResult');
+        resultContainer.style.display = 'block';
+
+        // 强制重绘布局
+        setTimeout(() => {
+            // 更新风险信息
+            document.getElementById('riskLevel').textContent = data.level;
+            document.getElementById('riskValue').textContent = `${(data.probability[3] * 100).toFixed(1)}%`;
+            document.getElementById('riskIcon').className = `fas ${data.icon} fa-3x`;
+            document.getElementById('riskHeader').style.backgroundColor = data.color;
+
+            // 渲染图表（确保容器可见）
+            renderPieChart(data.probability, data.color);
+            renderTrendChart(data.trend);
+
+            // 渲染建议
+            renderAdvice(data.advice);
+
+            // 主动调整图表尺寸
+            pieChart.resize();
+            trendChart.resize();
+        }, 50);
+    }
+
+    // 强化版饼图配置
+    function renderPieChart(probabilities, color) {
+        const option = {
+            tooltip: {
+                trigger: 'item',
+                formatter: '{b}: {c}%'
+            },
+            legend: {
+                top: 'bottom',
+                left: 'center'
+            },
+            series: [{
+                type: 'pie',
+                radius: ['35%', '65%'],
+                center: ['50%', '45%'],
+                data: [
+                    {value: (probabilities[0] * 100).toFixed(1), name: '非近视'},
+                    {value: (probabilities[1] * 100).toFixed(1), name: '轻度近视'},
+                    {value: (probabilities[2] * 100).toFixed(1), name: '中度近视'},
+                    {value: (probabilities[3] * 100).toFixed(1), name: '重度近视'}
+                ],
+                itemStyle: {
+                    color: params => {
+                        const colors = [color, '#FDCB6E', '#FF7675', '#D63031'];
+                        return colors[params.dataIndex];
+                    },
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                },
+                label: {
+                    show: true,
+                    formatter: '{d}%',
+                    fontSize: 14
+                },
+                emphasis: {
+                    label: {
+                        show: true,
+                        fontSize: 16
+                    }
+                }
+            }]
+        };
+        pieChart.setOption(option);
+    }
+
+    // 强化版趋势图配置
+    function renderTrendChart(trendData) {
+        const option = {
+            tooltip: {
+                trigger: 'axis',
+                formatter: '预测值: {c}%'
+            },
+            xAxis: {
+                type: 'category',
+                data: ['当前', '3月', '6月', '9月', '12月'],
+                axisLine: {
+                    lineStyle: {
+                        color: '#666'
+                    }
+                }
+            },
+            yAxis: {
+                type: 'value',
+                axisLabel: {
+                    formatter: '{value}%'
+                },
+                splitLine: {
+                    show: false
+                }
+            },
+            series: [{
+                data: trendData.map(v => Number((v * 100).toFixed(1))),
+                type: 'line',
+                smooth: true,
+                lineStyle: {
+                    width: 3,
+                    color: '#3A86FF'
+                },
+                areaStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        {offset: 0, color: 'rgba(58,134,255,0.6)'},
+                        {offset: 1, color: 'rgba(58,134,255,0.05)'}
+                    ])
+                },
+                symbol: 'circle',
+                symbolSize: 8,
+                itemStyle: {
+                    color: '#3A86FF',
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }
+            }],
+            grid: {
+                left: '3%',
+                right: '3%',
+                bottom: '10%',
+                containLabel: true
+            }
+        };
+        trendChart.setOption(option);
+    }
+
+    // 初始化图表
+    document.addEventListener('DOMContentLoaded', initCharts);
+</script>
+
+<style>
+    /* 添加图表容器样式 */
+    #pieChart, #trendChart {
+        width: 100% !important;
+        min-height: 200px;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+        margin: 1rem 0;
+    }
+
+    /* 响应式调整 */
+    @media (max-width: 768px) {
+        #pieChart, #trendChart {
+            height: 250px !important;
+        }
+    }
+</style>
+</html>
